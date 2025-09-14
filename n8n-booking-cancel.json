@@ -1,0 +1,9 @@
+{
+  "name": "Cancel Booking",
+  "nodes": [
+    {"parameters":{"path":"/v1/bookings/:id/cancel","methods":["POST"],"responseMode":"lastNode"},"id":"http_trigger","name":"HTTP Trigger","type":"n8n-nodes-base.httpTrigger","typeVersion":1,"position":[200,300]},
+    {"parameters":{"requestMethod":"PATCH","url":"<SUPABASE_URL>/rest/v1/bookings?id=eq.{{$params.id}}","jsonParameters":true,"bodyParametersJson":"={\"status\":\"cancelled\"}","authentication":"headerAuth","headerParametersJson":"{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}"},"id":"update","name":"Update Booking","type":"n8n-nodes-base.httpRequest","typeVersion":2,"position":[400,300]},
+    {"parameters":{"functionCode":"return {json:{status:'cancelled'}};"},"id":"response","name":"Response","type":"n8n-nodes-base.function","typeVersion":1,"position":[600,300]}
+  ],
+  "connections": {"HTTP Trigger":{"main":[[{"node":"Update Booking","type":"main","index":0}]]},"Update Booking":{"main":[[{"node":"Response","type":"main","index":0}]]}}
+}

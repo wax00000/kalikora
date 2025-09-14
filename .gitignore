@@ -1,0 +1,4 @@
+node_modules
+mover.db
+npm-debug.log*
+.tmp/

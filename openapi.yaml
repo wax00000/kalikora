@@ -1,0 +1,187 @@
+openapi: 3.1.0
+info:
+  title: Mover API
+  version: '1.0'
+servers:
+  - url: <SUPABASE_URL>/rest/v1
+paths:
+  /v1/offers/create:
+    post:
+      summary: Driver creates offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DriverOfferInput'
+      responses:
+        '200':
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverOffer'
+        '400':
+          $ref: '#/components/responses/Error'
+  /v1/offers/search:
+    get:
+      summary: Search offers
+      parameters:
+        - in: query
+          name: origin
+          schema:
+            type: string
+        - in: query
+          name: dest
+          schema:
+            type: string
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: List offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DriverOfferWithETA'
+        '400':
+          $ref: '#/components/responses/Error'
+  /v1/requests/create:
+    post:
+      summary: Create rider request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiderRequestInput'
+      responses:
+        '200':
+          description: Request created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiderRequest'
+        '400':
+          $ref: '#/components/responses/Error'
+  /v1/bookings/create:
+    post:
+      summary: Book seats on offer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingInput'
+      responses:
+        '200':
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          $ref: '#/components/responses/Error'
+  /v1/requests/{id}/accept:
+    post:
+      summary: Driver accepts rider request
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Offer created from request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverOffer'
+        '400':
+          $ref: '#/components/responses/Error'
+components:
+  schemas:
+    DriverOfferInput:
+      type: object
+      required: [driver_id, origin_city, origin_point, destination_city, destination_point, departure_time, price_total, seats_total]
+      properties:
+        driver_id: {type: string}
+        origin_city: {type: string}
+        origin_point: {$ref: '#/components/schemas/Point'}
+        destination_city: {type: string}
+        destination_point: {$ref: '#/components/schemas/Point'}
+        departure_time: {type: string, format: date-time}
+        price_total: {type: number}
+        seats_total: {type: integer}
+    DriverOffer:
+      allOf:
+        - $ref: '#/components/schemas/DriverOfferInput'
+        - type: object
+          properties:
+            id: {type: string}
+            seats_available: {type: integer}
+            status: {type: string}
+            created_at: {type: string, format: date-time}
+    DriverOfferWithETA:
+      allOf:
+        - $ref: '#/components/schemas/DriverOffer'
+        - type: object
+          properties:
+            distance_km: {type: number}
+            eta_minutes: {type: number}
+    RiderRequestInput:
+      type: object
+      required: [user_id, origin_city, destination_city, window_start, window_end, seats_needed]
+      properties:
+        user_id: {type: string}
+        origin_city: {type: string}
+        destination_city: {type: string}
+        window_start: {type: string, format: date-time}
+        window_end: {type: string, format: date-time}
+        seats_needed: {type: integer}
+        price_offer: {type: number}
+    RiderRequest:
+      allOf:
+        - $ref: '#/components/schemas/RiderRequestInput'
+        - type: object
+          properties:
+            id: {type: string}
+            status: {type: string}
+            created_at: {type: string, format: date-time}
+    BookingInput:
+      type: object
+      required: [offer_id, user_id, seats_reserved, price_paid]
+      properties:
+        offer_id: {type: string}
+        user_id: {type: string}
+        seats_reserved: {type: integer}
+        price_paid: {type: number}
+    Booking:
+      allOf:
+        - $ref: '#/components/schemas/BookingInput'
+        - type: object
+          properties:
+            id: {type: string}
+            status: {type: string}
+            created_at: {type: string, format: date-time}
+    Point:
+      type: object
+      required: [lat, lng]
+      properties:
+        lat: {type: number}
+        lng: {type: number}
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: {type: string}

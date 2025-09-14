@@ -1,0 +1,80 @@
+{
+  "name": "Rider Search Offers",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/v1/offers/search",
+        "methods": ["GET"],
+        "responseMode": "lastNode"
+      },
+      "id": "http_trigger",
+      "name": "HTTP Trigger",
+      "type": "n8n-nodes-base.httpTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const {origin,dest,date} = $json[\"query\"];\nconst baseUrl = `<SUPABASE_URL>/rest/v1/driver_offers?origin_city=eq.${origin}&destination_city=eq.${dest}&departure_time=gte.${date}T00:00:00&departure_time=lt.${date}T23:59:59`;\nreturn {json:{url: baseUrl}};"
+      },
+      "id": "build",
+      "name": "Build Query",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{$json.url}}",
+        "jsonParameters": true,
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"apikey\":\"<SERVICE_ROLE_KEY>\"}"
+      },
+      "id": "fetch",
+      "name": "Fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const offers = $json[\"body\"] || [];\nreturn offers.map(o=>({json:o}));"
+      },
+      "id": "split",
+      "name": "Split Offers",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "https://api.mapbox.com/directions/v5/mapbox/driving/{{json.origin_point.lng}},{{json.origin_point.lat}};{{json.destination_point.lng}},{{json.destination_point.lat}}?access_token=<MAPBOX_TOKEN>",
+        "jsonParameters": false
+      },
+      "id": "directions",
+      "name": "Mapbox Directions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const route = $json.routes[0];\nconst out = Object.assign($item(0).json,{distance_km: route.distance/1000, eta_minutes: route.duration/60});\nreturn {json: out};"
+      },
+      "id": "merge",
+      "name": "Merge ETA",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200, 300]
+    }
+  ],
+  "connections": {
+    "HTTP Trigger": {"main":[[{"node":"Build Query","type":"main","index":0}]]},
+    "Build Query": {"main":[[{"node":"Fetch","type":"main","index":0}]]},
+    "Fetch": {"main":[[{"node":"Split Offers","type":"main","index":0}]]},
+    "Split Offers": {"main":[[{"node":"Mapbox Directions","type":"main","index":0}]]},
+    "Mapbox Directions": {"main":[[{"node":"Merge ETA","type":"main","index":0}]]}
+  }
+}

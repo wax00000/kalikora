@@ -1,0 +1,16 @@
+{
+  "name": "Driver Accept Request",
+  "nodes": [
+    {"parameters":{"path":"/v1/requests/:id/accept","methods":["POST"],"responseMode":"lastNode"},"id":"http_trigger","name":"HTTP Trigger","type":"n8n-nodes-base.httpTrigger","typeVersion":1,"position":[200,300]},
+    {"parameters":{"requestMethod":"GET","url":"<SUPABASE_URL>/rest/v1/rider_requests?id=eq.{{$params.id}}","jsonParameters":true,"authentication":"headerAuth","headerParametersJson":"{\"apikey\":\"<SERVICE_ROLE_KEY>\"}"},"id":"fetch","name":"Fetch Request","type":"n8n-nodes-base.httpRequest","typeVersion":2,"position":[400,300]},
+    {"parameters":{"functionCode":"const r = $json.body[0]; const offer = {driver_id:$json.driver_id, origin_city:r.origin_city, origin_point:r.origin_point, destination_city:r.destination_city, destination_point:r.destination_point, departure_time:r.window_start, price_total:r.price_offer||0, seats_total:r.seats_needed, seats_available:r.seats_needed, request_id:r.id}; return {json:offer};"},"id":"build","name":"Build Offer","type":"n8n-nodes-base.function","typeVersion":1,"position":[600,300]},
+    {"parameters":{"requestMethod":"POST","url":"<SUPABASE_URL>/rest/v1/driver_offers","jsonParameters":true,"bodyParametersJson":"={{JSON.stringify($json)}}","authentication":"headerAuth","headerParametersJson":"{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}"},"id":"insert","name":"Insert Offer","type":"n8n-nodes-base.httpRequest","typeVersion":2,"position":[800,300]},
+    {"parameters":{"requestMethod":"POST","url":"https://api.resend.com/emails","jsonParameters":true,"bodyParametersJson":"={\"from\":\"noreply@mover.local\",\"to\":\"{{$json.email}}\",\"subject\":\"Request accepted\",\"html\":\"Your ride has been matched\"}","authentication":"headerAuth","headerParametersJson":"{\"Authorization\":\"Bearer <RESEND_API_KEY>\"}"},"id":"email","name":"Email Rider","type":"n8n-nodes-base.httpRequest","typeVersion":2,"position":[1000,300]}
+  ],
+  "connections": {
+    "HTTP Trigger": {"main":[[{"node":"Fetch Request","type":"main","index":0}]]},
+    "Fetch Request": {"main":[[{"node":"Build Offer","type":"main","index":0}]]},
+    "Build Offer": {"main":[[{"node":"Insert Offer","type":"main","index":0}]]},
+    "Insert Offer": {"main":[[{"node":"Email Rider","type":"main","index":0}]]}
+  }
+}
