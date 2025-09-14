@@ -1,0 +1,81 @@
+{
+  "name": "Rider Book Seats",
+  "nodes": [
+    {
+      "parameters": {"path": "/v1/bookings/create", "methods": ["POST"], "responseMode": "lastNode"},
+      "id": "http_trigger",
+      "name": "HTTP Trigger",
+      "type": "n8n-nodes-base.httpTrigger",
+      "typeVersion": 1,
+      "position": [200,300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const b = $json; if(b.seats_reserved<=0) throw new Error('seats_reserved'); return {json:b};"
+      },
+      "id": "validate",
+      "name": "Validate",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400,300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// transaction simulation\nreturn {json: $json};"
+      },
+      "id": "transaction",
+      "name": "Txn",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600,300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/bookings",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{JSON.stringify($json)}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}"
+      },
+      "id": "insert",
+      "name": "Insert Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [800,300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/driver_offers?id=eq.{{$json.offer_id}}",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"seats_available\": {{Number($json.seats_available) - Number($json.seats_reserved)}}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}",
+        "options": {"method": "PATCH"}
+      },
+      "id": "decrement",
+      "name": "Decrement Seats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [1000,300]
+    },
+    {
+      "parameters": {
+        "functionCode": "return {json:{status:'confirmed', payment:'cash'}};"
+      },
+      "id": "response",
+      "name": "Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1200,300]
+    }
+  ],
+  "connections": {
+    "HTTP Trigger": {"main":[[{"node":"Validate","type":"main","index":0}]]},
+    "Validate": {"main":[[{"node":"Txn","type":"main","index":0}]]},
+    "Txn": {"main":[[{"node":"Insert Booking","type":"main","index":0}]]},
+    "Insert Booking": {"main":[[{"node":"Decrement Seats","type":"main","index":0}]]},
+    "Decrement Seats": {"main":[[{"node":"Response","type":"main","index":0}]]}
+  }
+}
