@@ -1,0 +1,47 @@
+{
+  "name": "Rider Create Request",
+  "nodes": [
+    {
+      "parameters": {"path": "/v1/requests/create", "methods": ["POST"], "responseMode": "lastNode"},
+      "id": "http_trigger",
+      "name": "HTTP Trigger",
+      "type": "n8n-nodes-base.httpTrigger",
+      "typeVersion": 1,
+      "position": [200,300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/rider_requests",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{JSON.stringify($json)}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}"
+      },
+      "id": "insert",
+      "name": "Insert Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [400,300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://fcm.googleapis.com/fcm/send",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"to\":\"/topics/city_{{$json.origin_city.toLowerCase()}}\",\"notification\":{\"title\":\"New rider request\",\"body\":\"{{$json.origin_city}} to {{$json.destination_city}}\"}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"Authorization\":\"key=<FCM_SERVER_KEY>\"}"
+      },
+      "id": "notify",
+      "name": "Notify Drivers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [600,300]
+    }
+  ],
+  "connections": {
+    "HTTP Trigger": {"main":[[{"node":"Insert Request","type":"main","index":0}]]},
+    "Insert Request": {"main":[[{"node":"Notify Drivers","type":"main","index":0}]]}
+  }
+}

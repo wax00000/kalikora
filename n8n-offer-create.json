@@ -1,0 +1,93 @@
+{
+  "name": "Driver Create Offer",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/v1/offers/create",
+        "methods": ["POST"],
+        "responseMode": "lastNode"
+      },
+      "id": "http_trigger",
+      "name": "HTTP Trigger",
+      "type": "n8n-nodes-base.httpTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $json;\nif(new Date(body.departure_time) <= new Date()) {throw new Error('departure_time must be future');}\nif(body.seats_total <=0 || body.price_total <=0) {throw new Error('invalid seats or price');}\nreturn {json: body};"
+      },
+      "id": "validate",
+      "name": "Validate",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/driver_offers",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{JSON.stringify($json)}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"apikey\":\"<SERVICE_ROLE_KEY>\",\"Authorization\":\"Bearer <SERVICE_ROLE_KEY>\"}"
+      },
+      "id": "insert",
+      "name": "Insert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "https://fcm.googleapis.com/fcm/send",
+        "jsonParameters": true,
+        "bodyParametersJson": "={\"to\":\"/topics/city_{{$json.origin_city.toLowerCase()}}\",\"notification\":{\"title\":\"New ride offer\",\"body\":\"{{$json.origin_city}} to {{$json.destination_city}}\"}}",
+        "authentication": "headerAuth",
+        "headerParametersJson": "{\"Authorization\":\"key=<FCM_SERVER_KEY>\"}"
+      },
+      "id": "notify",
+      "name": "Notify Riders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [800, 300]
+    }
+  ],
+  "connections": {
+    "HTTP Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate": {
+      "main": [
+        [
+          {
+            "node": "Insert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert": {
+      "main": [
+        [
+          {
+            "node": "Notify Riders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
